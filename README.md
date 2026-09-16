@@ -13,6 +13,21 @@ npm run dev
 
 打开 http://localhost:4321 。开发启动会替换旧进程；文章使用延迟渲染，避免内容集合缓存旧版 Markdown 插件的 HTML。如果提示开发服务已经运行，先执行 `npx astro dev stop`，再执行 `npm run dev`。`npm run check` 检查类型，`npm run build` 生成 `dist/`，`npm run preview` 预览构建产物。
 
+## VS Code 中快速验证
+
+安装 Node 24 并执行 `npm ci` 后，用 VS Code 打开此仓库文件夹。保存当前 Markdown，把光标放在 Kotlin 代码块内，按 **Cmd+Shift+B**（Windows/Linux：Ctrl+Shift+B），运行当前块。结果出现在终端，失败信息进入 Problems 面板。
+
+命令面板 → Tasks: Run Task → `Kotlin: 验证当前 Markdown 全部代码块` 可运行整篇文章。任务读取磁盘文件，请先保存；这不会修改全局快捷键。预览中的复制按钮保持原样，项目 tasks.json 无法直接扩展它。
+
+命令行也可以使用：
+
+```sh
+npm run verify:snippets -- content/posts/welcome.md
+npm run verify:snippets -- content/posts/welcome.md --line 14
+```
+
+支持 kotlin / kotlin file / kotlin test，与网页共用执行协议。代码发送到官方服务，无需本机 Kotlin/JVM；每块最多等待 30 秒，逐块执行，任一失败则退出码为 1。也支持环境变量 PUBLIC_KOTLIN_RUN_URL / PUBLIC_KOTLIN_TEST_URL（CLI 不自动读取 .env 文件）。
+
 ## 写文章
 
 在 `content/posts/` 下添加 `.md`，支持子目录。路径决定文章 URL，重命名文件会改变链接。
