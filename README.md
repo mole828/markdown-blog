@@ -80,7 +80,63 @@ class GreetingTest {
 - `src/styles/global.css`：书页、清爽、夜读三种阅读样式及排版。
 - `src/plugins/runnable.mjs`：可运行代码块的 Markdown 约定。
 
-## Linux 服务器部署
+## GitHub Actions 自动部署（推荐）
+
+`.github/workflows/deploy.yml` 在推送 `main` 或 Actions 页面手动 Run workflow 时执行：Node 24 安装依赖 → 类型检查、测试 → 静态构建 → SSH 上传 → 原子切换 `current`。仅允许 main 发布，并发发布排队，不中途取消正在进行的发布。构建/上传/解包失败不会切换线上版本；历史版本保留。工作流不会自动修改 Caddy 或 DNS。
+
+### 首次配置
+
+在 GitHub 仓库 Settings → Secrets and variables → Actions 添加 Repository secrets：
+
+| Secret | 内容 |
+| --- | --- |
+| `DEPLOY_HOST` | GitHub runner 可访问的真实域名或 IPv4 地址，不能填本机 SSH 别名 mc |
+| `DEPLOY_USER` | SSH 登录用户：blog-deploy |
+| `DEPLOY_PORT` | SSH 端口，可省略，默认 22 |
+| `DEPLOY_SSH_KEY` | 专用部署私钥的完整内容（含 BEGIN/END 行），无口令 |
+| `DEPLOY_KNOWN_HOSTS` | 已核验的 SSH 主机公钥记录，known_hosts 格式 |
+
+Repository variables（非 Secrets）：
+
+- `DEPLOY_ROOT`：可省略，默认 `/srv/markdown-blog`。绝对路径，仅支持字母、数字、下划线、连字符和斜杠。
+- `PUBLIC_KOTLIN_RUN_URL` / `PUBLIC_KOTLIN_TEST_URL`：可选，自定义官方兼容编译接口。
+
+生成单独的部署密钥，不要复用个人 SSH 私钥：
+
+```sh
+ssh-keygen -t ed25519 -f ./blog-deploy-key -C github-actions-markdown-blog -N ''
+```
+
+将 `.pub` 文件的公钥追加到服务器部署用户的 `~/.ssh/authorized_keys`，可在公钥前加 `restrict ` 禁止转发和终端（仍允许发布命令）。私钥保存到 `DEPLOY_SSH_KEY`，不要提交仓库。工作流使用严格主机校验，不在运行时盲目信任 ssh-keyscan。
+
+主机公钥可从已经信任的连接读取：`ssh mc 'cat /etc/ssh/ssh_host_ed25519_key.pub'`。将内容前面加上实际 `DEPLOY_HOST`，形成 `hostname ssh-ed25519 AAAA...`；非 22 端口应为 `[hostname]:port ssh-ed25519 AAAA...`，写入 `DEPLOY_KNOWN_HOSTS`。
+
+mc 的 Caddy 通过 `/srv/markdown-blog:/srv/markdown-blog:ro` 只读挂载发布目录。部署用户需要可写发布目录；服务器只需 Bash、tar、flock 和 GNU coreutils，无需 Node/npm。按 `deploy/Caddyfile.actions.example` 增加独立博客域名，容器内根目录为 `/srv/markdown-blog/current`。首次发布完成后校验并重载 Caddy：
+
+```sh
+docker exec web caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+docker exec web caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+```
+
+后续只需 git push。Caddy 无需随文章发布重启。不要把仓库或发布父目录直接作为 Web 根目录。更改 DEPLOY_ROOT 时须同时调整 Caddy 对应挂载/路径。
+
+### 回滚
+
+在服务器执行（RELEASE 替换为 releases 下的历史目录名）：
+
+```sh
+cd /srv/markdown-blog
+(
+  flock -w 120 9
+  test -s releases/RELEASE/index.html || exit 1
+  ln -s releases/RELEASE .rollback
+  mv -Tf .rollback current
+) 9>.deploy.lock
+```
+
+只切换静态产物，不修改源码。历史版本不自动清理；中断上传可能留下 `.upload-*.tar.gz`，确认没有发布任务后可删除这些残留文件。
+
+## 备选：Linux 服务器本地构建
 
 需要 Git、Node.js 24、npm、Bash、flock（通常来自 util-linux）、GNU coreutils，以及 Caddy。将仓库推送到你自己的 Git 托管服务，再在服务器 clone；本仓库没有预设远程地址。
 

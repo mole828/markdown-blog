@@ -1,0 +1,7 @@
+# Merge this block into /home/mole/index/web/Caddyfile on mc.
+# Replace blog.molec.cc with your domain before loading.
+blog.molec.cc {
+    root * /srv/markdown-blog/current
+    encode zstd gzip
+    file_server
+}
