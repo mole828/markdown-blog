@@ -1,6 +1,9 @@
 import { createHighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 import kotlin from 'shiki/langs/kotlin.mjs';
+import rust from 'shiki/langs/rust.mjs';
+import go from 'shiki/langs/go.mjs';
+import typescript from 'shiki/langs/typescript.mjs';
 
 // TextMate token colors inspired by the Kotlin website, shared by server and browser.
 const theme = {
@@ -24,7 +27,9 @@ const theme = {
   ],
 };
 let highlighter;
-export async function highlightKotlin(source) {
-  highlighter ||= createHighlighterCore({ langs: [kotlin], themes: [theme], engine: createJavaScriptRegexEngine() });
-  return (await highlighter).codeToHtml(source, { lang: 'kotlin', theme: theme.name });
+export async function highlightCode(source, lang = 'kotlin') {
+  highlighter ||= createHighlighterCore({ langs: [kotlin, rust, go, typescript], themes: [theme], engine: createJavaScriptRegexEngine() });
+  return (await highlighter).codeToHtml(source, { lang, theme: theme.name });
 }
+
+export const highlightKotlin = (source) => highlightCode(source);

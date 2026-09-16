@@ -183,3 +183,13 @@ mv -Tf /srv/markdown-blog/current.rollback /srv/markdown-blog/current
 ```
 
 脚本针对 Linux；macOS 用本地预览命令即可。历史 release 不自动删除，可在确认不用后手动清理。
+
+## Rust、TypeScript 和 Go 示例
+
+在围栏元信息中添加 `runnable`，例如 `rust runnable`、`typescript runnable`（也支持 `ts runnable`）和 `go runnable`。未标记的这些语言仍显示普通代码块；Kotlin 的现有行为不变。各块独立运行，不共享变量。
+
+- Rust：整段作为二进制程序提交至官方 Rust Playground，使用 stable、2021 edition、debug 模式。可以使用 Playground 已提供的依赖（例如 Tokio），不能任意安装 crate。`PUBLIC_RUST_RUN_URL` 可替换为兼容 `/execute` 协议、允许浏览器 CORS 的服务；配置变更后需重新构建。
+- TypeScript：点击运行后才加载 TypeScript 编译器，转译后在浏览器的隔离 iframe / Worker 中执行，支持顶层 `await`，捕获 `console.log/info/warn/error/debug`。这是示例执行器，不做完整类型检查，也不支持 npm 导入、Node.js API、DOM 或网络访问。异步任务应显式 `await`，代码结束后执行环境会销毁；30 秒超时会终止 Worker。
+- Go：按钮复制当前编辑内容并打开 [Go Playground](https://go.dev/play/)，粘贴后点击 Run。复制被浏览器拒绝时会提示手动复制。官方要求其他网站调用服务前先联系，因此此处不自动提交到 Go 接口。
+
+`npm run verify:snippets` 仍只验证 Kotlin 代码块。

@@ -1,3 +1,4 @@
+import { runRust, runTypeScript } from './runners';
 import { runKotlin, type KotlinMode } from './kotlin';
 const endpoint = import.meta.env.PUBLIC_KOTLIN_RUN_URL || 'https://api.kotlinlang.org/api/2.4.20/compiler/run';
 const testEndpoint = import.meta.env.PUBLIC_KOTLIN_TEST_URL || endpoint.replace(/\/run\/?$/, '/test');
@@ -12,6 +13,9 @@ for (const block of document.querySelectorAll<HTMLElement>('.kotlin-example')) {
   const result = query<HTMLElement>('.kotlin-result');
   const status = query<HTMLElement>('.kotlin-status');
   const output = query<HTMLElement>('.kotlin-output');
+  const language = block.dataset.language || 'kotlin';
+  const label = { kotlin: 'Kotlin', rust: 'Rust', go: 'Go', typescript: 'TypeScript' }[language] || language;
+  const runLabel = run.textContent;
   const mode = block.dataset.mode as KotlinMode;
   let editing = false;
   let highlightVersion = 0;
@@ -24,8 +28,8 @@ for (const block of document.querySelectorAll<HTMLElement>('.kotlin-example')) {
     const version = ++highlightVersion;
     const text = source.value;
     try {
-      const { highlightKotlin } = await import('./kotlin-highlight.mjs');
-      const html = await highlightKotlin(text + (text.endsWith('\n') ? ' ' : ''));
+      const { highlightCode } = await import('./kotlin-highlight.mjs');
+      const html = await highlightCode(text + (text.endsWith('\n') ? ' ' : ''), language);
       if (version !== highlightVersion) return;
       preview.innerHTML = html; syncScroll();
       editor.classList.remove('highlight-fallback');
@@ -60,18 +64,37 @@ for (const block of document.querySelectorAll<HTMLElement>('.kotlin-example')) {
   });
   run.addEventListener('click', async () => {
     if (run.disabled) return;
+    if (language === 'go') {
+      const copy = navigator.clipboard?.writeText(source.value);
+      window.open('https://go.dev/play/', '_blank', 'noopener,noreferrer');
+      result.hidden = false;
+      try {
+        if (!copy) throw new Error('Clipboard unavailable');
+        await copy;
+        status.textContent = '代码已复制';
+        output.textContent = '在 Go Playground 粘贴代码，然后点击 Run。若新窗口未打开，请访问 https://go.dev/play/。';
+      } catch {
+        status.textContent = '请手动复制代码';
+        output.textContent = '浏览器未允许复制。点击编辑，复制代码并粘贴到 https://go.dev/play/ 后运行。';
+      }
+      return;
+    }
     run.disabled = true; edit.disabled = true; reset.disabled = true; source.readOnly = true;
     run.textContent = '运行中…'; result.hidden = false; status.textContent = '正在编译和运行…'; output.textContent = ''; block.setAttribute('aria-busy', 'true');
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 30000);
     try {
-      const response = await runKotlin(source.value, mode, mode === 'test' ? testEndpoint : endpoint, controller.signal);
+      const response = language === 'typescript'
+        ? await runTypeScript(source.value, controller.signal)
+        : language === 'rust'
+          ? await runRust(source.value, import.meta.env.PUBLIC_RUST_RUN_URL || 'https://play.rust-lang.org/execute', controller.signal)
+          : await runKotlin(source.value, mode, mode === 'test' ? testEndpoint : endpoint, controller.signal);
       output.textContent = response.text; status.textContent = response.failed ? '运行失败' : '运行完成';
     } catch (error) {
       status.textContent = '运行失败';
-      output.textContent = controller.signal.aborted ? '请求超时，请稍后重试。' : error instanceof TypeError ? '无法连接 Kotlin 服务，请检查网络后重试。' : error instanceof Error ? error.message : '运行失败，请重试。';
+      output.textContent = controller.signal.aborted ? (language === 'typescript' ? '运行超过 30 秒，已终止执行。' : '请求超时，请稍后重试。') : error instanceof TypeError ? `无法连接 ${label} 服务，请检查网络后重试。` : error instanceof Error ? error.message : '运行失败，请重试。';
     } finally {
-      clearTimeout(timeout); run.disabled = false; edit.disabled = false; reset.disabled = false; source.readOnly = false; run.textContent = '▶ 运行'; block.removeAttribute('aria-busy');
+      clearTimeout(timeout); run.disabled = false; edit.disabled = false; reset.disabled = false; source.readOnly = false; run.textContent = runLabel; block.removeAttribute('aria-busy');
     }
   });
 }
