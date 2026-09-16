@@ -1,0 +1,12 @@
+---
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { posts, dateLabel, tagUrl } from '../../lib/posts';
+export async function getStaticPaths() { return (await posts()).map(post => ({ params: { id: post.id }, props: { post } })); }
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+---
+<Base title={post.data.title} description={post.data.description}><a class="back" href="/">← 全部文章</a><article><header class="article-header"><time datetime={dateLabel(post.data.date)}>{dateLabel(post.data.date)}</time><h1>{post.data.title}</h1><p>{post.data.description}</p><div class="tags">{post.data.tags.map(tag => <a href={tagUrl(tag)}>#{tag}</a>)}</div></header>{headings.length > 0 && <details class="toc"><summary>文章目录</summary><nav>{headings.filter(h => h.depth <= 3).map(h => <a style={`padding-left: ${(h.depth - 1) * 12}px`} href={`#${h.slug}`}>{h.text}</a>)}</nav></details>}<div class="prose"><Content /></div></article></Base>
+<script>
+import '../../lib/kotlin-client';
+</script>

@@ -1,0 +1,16 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description?: string; }
+const { title, description = '记录代码、想法和小实验。' } = Astro.props;
+---
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/><meta name="description" content={description}/><title>{title} · 随手记</title></head>
+<body><header class="site-header"><a class="brand" href="/">随手记<span> NOTES & EXPERIMENTS</span></a><label class="style-picker">阅读风格 <select id="reading-style"><option value="paper">书页</option><option value="clean">清爽</option><option value="night">夜读</option></select></label></header>
+<main><slot /></main><footer>写一点，想一点，运行看看。</footer>
+<script>
+const picker = document.querySelector<HTMLSelectElement>('#reading-style')!;
+try { const value = localStorage.getItem('reading-style'); if (value && ['paper','clean','night'].includes(value)) picker.value = value; } catch {}
+const apply = () => { document.documentElement.dataset.style = picker.value; };
+apply(); picker.addEventListener('change', () => { apply(); try { localStorage.setItem('reading-style', picker.value); } catch {} });
+</script>
+</body></html>

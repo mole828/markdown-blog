@@ -1,0 +1,8 @@
+---
+import Base from '../layouts/Base.astro';
+import PostList from '../components/PostList.astro';
+import { posts, tagUrl } from '../lib/posts';
+const entries = await posts();
+const tags = [...new Set(entries.flatMap(post => post.data.tags))].sort();
+---
+<Base title="首页"><section class="intro"><p class="eyebrow">A SMALL CORNER OF THE WEB</p><h1>把想法写下来。</h1><p>关于代码、日常，以及那些值得动手试试的小问题。</p></section><nav class="tags" aria-label="文章标签">{tags.map(tag => <a href={tagUrl(tag)}>{tag}</a>)}</nav><div class="section-label">全部文章 <span>{entries.length} 篇</span></div><PostList posts={entries}/></Base>

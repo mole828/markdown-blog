@@ -1,0 +1,4 @@
+example.com {
+    root * /srv/markdown-blog/current
+    file_server
+}
